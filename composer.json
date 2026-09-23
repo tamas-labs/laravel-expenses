@@ -24,7 +24,10 @@
     "require": {
         "php": "^8.3",
         "illuminate/contracts": "^13.0",
+        "illuminate/http": "^13.0",
+        "illuminate/routing": "^13.0",
         "illuminate/support": "^13.0",
+        "opis/json-schema": "^2.6",
         "tamas-labs/expenses-schema": "^1.0.2"
     },
     "require-dev": {

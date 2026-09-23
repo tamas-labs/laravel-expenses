@@ -7,9 +7,12 @@ namespace TamasLabs\LaravelExpenses\Tests;
 use Illuminate\Foundation\Application;
 use Orchestra\Testbench\TestCase as Orchestra;
 use TamasLabs\LaravelExpenses\ExpensesServiceProvider;
+use TamasLabs\LaravelExpenses\Tests\Support\InteractsWithContract;
 
 abstract class TestCase extends Orchestra
 {
+    use InteractsWithContract;
+
     /**
      * @param  Application  $app
      * @return list<class-string>

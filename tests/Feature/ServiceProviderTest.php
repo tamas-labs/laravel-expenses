@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use TamasLabs\LaravelExpenses\Contract\ContractValidator;
 use TamasLabs\LaravelExpenses\ExpensesServiceProvider;
+use TamasLabs\LaravelExpenses\Http\Middleware\EnsureContractVersion;
 
 it('loads the service provider', function (): void {
     expect(app()->getProviders(ExpensesServiceProvider::class))->toHaveCount(1);
@@ -27,4 +30,12 @@ it('publishes the config file with the expenses-config tag', function (): void {
     } finally {
         File::delete($target);
     }
+});
+
+it('binds the contract validator as a singleton', function (): void {
+    expect(app(ContractValidator::class))->toBe(app(ContractValidator::class));
+});
+
+it('registers the contract version middleware alias', function (): void {
+    expect(app(Router::class)->getMiddleware())->toHaveKey('expenses.contract', EnsureContractVersion::class);
 });
