@@ -30,3 +30,14 @@ a [Semantic Versioning](https://semver.org/)-et.
   - Eloquent modellek (`ownedBy()`, `alive()`, `changedSince()` scope-ok), factory-k;
   - új config kulcsok: `expenses.user_model`, `expenses.database.table_prefix`;
   - a migrációk publikálhatók (`expenses-migrations` tag).
+- Mapping réteg:
+  - `ResourceRegistry` (singleton): az összes erőforrás egy helyen, scope-pal, push-sorrenddel és a
+    szerződés-minorral, amelyben megjelent;
+  - erőforrásonként egy deklaratív mapper (`RecordMapper` + `Field`-lista): validált rekord →
+    modellattribútumok, modell → szerződés szerinti payload a séma kulcssorrendjében;
+  - az időbélyegek kifelé mindig `…T08:30:00.123Z` alakúak (UTC, az app időzónájától függetlenül),
+    befelé UTC-re váltva és ezredmásodpercre vágva; a szökőmásodperc rekordszintű elutasítás
+    (`MappingRejection`);
+  - `JsonText` cast a JSON szövegoszlopokra: a `{}` és a `[]` megkülönböztetve, a kulcssorrend
+    megőrizve;
+  - a zseb `categoryIds`-e a pivotból, UUID szerint rendezve megy ki.

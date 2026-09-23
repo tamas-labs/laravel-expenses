@@ -9,6 +9,7 @@ use TamasLabs\LaravelExpenses\Database\Factories\ProductFactory;
 use TamasLabs\LaravelExpenses\Database\Factories\ShoppingListItemFactory;
 use TamasLabs\LaravelExpenses\Models\Category;
 use TamasLabs\LaravelExpenses\Models\ShoppingListItem;
+use TamasLabs\LaravelExpenses\Support\Json;
 use TamasLabs\LaravelExpenses\Support\PackageConfig;
 use TamasLabs\LaravelExpenses\Tests\Fixtures\User;
 
@@ -96,7 +97,7 @@ it('stores a double bit for bit', function (float $quantity): void {
 ]);
 
 it('keeps the key order of a JSON text column', function (): void {
-    $product = ProductFactory::new()->createOne(['custom_fields' => '{"b":1,"a":2}']);
+    $product = ProductFactory::new()->createOne(['custom_fields' => Json::decode('{"b":1,"a":2}')]);
 
     $stored = DB::table(PackageConfig::table('products'))
         ->where('user_id', $product->user_id)

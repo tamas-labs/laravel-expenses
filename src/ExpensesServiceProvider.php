@@ -8,6 +8,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use TamasLabs\LaravelExpenses\Contract\ContractValidator;
 use TamasLabs\LaravelExpenses\Http\Middleware\EnsureContractVersion;
+use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
 
 final class ExpensesServiceProvider extends ServiceProvider
 {
@@ -16,6 +17,7 @@ final class ExpensesServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(self::configPath(), 'expenses');
 
         $this->app->singleton(ContractValidator::class);
+        $this->app->singleton(ResourceRegistry::class);
     }
 
     public function boot(): void

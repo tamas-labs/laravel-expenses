@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace TamasLabs\LaravelExpenses\Database\Factories;
 
+use stdClass;
 use TamasLabs\LaravelExpenses\Models\Product;
 
 /**
@@ -35,9 +36,9 @@ final class ProductFactory extends SyncModelFactory
             'user_rating' => null,
             'user_status' => null,
             'preferred_shop' => null,
-            'user_tags' => '[]',
+            'user_tags' => [],
             'purchase_reminder' => false,
-            'custom_fields' => '{}',
+            'custom_fields' => new stdClass,
         ];
     }
 }

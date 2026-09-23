@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace TamasLabs\LaravelExpenses\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use stdClass;
+use TamasLabs\LaravelExpenses\Database\Casts\JsonText;
 
 /**
  * @property string $name
@@ -18,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $shop_display_name
  * @property string|null $normalized_shop
  * @property string|null $note
- * @property string $items
+ * @property list<stdClass> $items
  * @property-read Currency $currency
  */
 final class Expense extends SyncModel
@@ -34,6 +36,7 @@ final class Expense extends SyncModel
     {
         return [
             'amount_minor' => 'integer',
+            'items' => JsonText::class,
         ];
     }
 

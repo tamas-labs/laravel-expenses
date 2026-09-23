@@ -6,7 +6,6 @@ namespace TamasLabs\LaravelExpenses\Database\Factories;
 
 use TamasLabs\LaravelExpenses\Database\Currencies;
 use TamasLabs\LaravelExpenses\Models\Expense;
-use TamasLabs\LaravelExpenses\Support\Json;
 
 /**
  * An expense with one item, its amount the item's total.
@@ -40,7 +39,7 @@ final class ExpenseFactory extends SyncModelFactory
             'shop_display_name' => mb_substr($shop, 0, 80),
             'normalized_shop' => self::normalize($shop),
             'note' => null,
-            'items' => Json::encode([
+            'items' => [
                 (object) [
                     'id' => self::uuid(),
                     'name' => $name,
@@ -52,7 +51,7 @@ final class ExpenseFactory extends SyncModelFactory
                     'unit' => null,
                     'totalAmountMinor' => $unitPriceMinor * $quantity,
                 ],
-            ]),
+            ],
         ];
     }
 }
