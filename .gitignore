@@ -1,2 +1,7 @@
 .claude
 CLAUDE.md
+/vendor
+composer.lock
+.phpunit.cache
+.phpunit.result.cache
+/build

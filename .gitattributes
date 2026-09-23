@@ -1,0 +1,13 @@
+* text=auto eol=lf
+
+# Keep the Composer tarball to what a host app runs: tests, tooling and the
+# development environment are of no use to a consumer.
+/.github            export-ignore
+/.editorconfig      export-ignore
+/.gitattributes     export-ignore
+/docker             export-ignore
+/tests              export-ignore
+/compose.yaml       export-ignore
+/phpstan.neon.dist  export-ignore
+/phpunit.xml.dist   export-ignore
+/pint.json          export-ignore

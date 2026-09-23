@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: max
+    paths:
+        - src
+        - config
+        - tests
+    excludePaths:
+        # Pest's arch DSL (`arch()->preset()`, `arch()->expect()`) is chained
+        # through TestCall::__call and only resolved at run time, so PHPStan
+        # sees nothing but `mixed` there. The file holds no logic; Pest runs it.
+        - tests/Architecture

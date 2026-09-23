@@ -1,0 +1,28 @@
+services:
+    php:
+        build: docker/php
+        working_dir: /app
+        volumes:
+            - .:/app
+            - composer-cache:/tmp/composer/cache
+        user: '${UID:-1000}:${GID:-1000}'
+        depends_on:
+            mysql:
+                condition: service_healthy
+
+    # Throwaway test database: the data directory lives in memory.
+    mysql:
+        image: mysql:8.4
+        environment:
+            MYSQL_ROOT_PASSWORD: secret
+            MYSQL_DATABASE: expenses_test
+        tmpfs:
+            - /var/lib/mysql
+        healthcheck:
+            test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-psecret']
+            interval: 2s
+            timeout: 5s
+            retries: 30
+
+volumes:
+    composer-cache:

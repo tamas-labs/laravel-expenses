@@ -1,0 +1,82 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+jobs:
+    static:
+        name: Static analysis
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.4'
+                  coverage: none
+
+            - run: composer validate --strict
+
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.composer/cache/files
+                  key: composer-static-${{ hashFiles('composer.json') }}
+
+            - run: composer update --prefer-stable --no-interaction --no-progress
+
+            - run: vendor/bin/pint --test
+
+            - run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+    tests:
+        name: Tests (PHP ${{ matrix.php }}, ${{ matrix.dependencies }})
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    # 8.3 is the floor composer.json declares — and Laravel 13's.
+                    # Composer picks Pest 4 here, Pest 5 on 8.4 and later.
+                    - php: '8.3'
+                      dependencies: prefer-lowest
+                    - php: '8.4'
+                      dependencies: prefer-stable
+                    - php: '8.5'
+                      dependencies: prefer-stable
+
+        services:
+            mysql:
+                image: mysql:8.4
+                env:
+                    MYSQL_ROOT_PASSWORD: secret
+                    MYSQL_DATABASE: expenses_test
+                ports:
+                    - 3306:3306
+                options: >-
+                    --health-cmd="mysqladmin ping -h 127.0.0.1 -psecret"
+                    --health-interval=5s
+                    --health-timeout=5s
+                    --health-retries=20
+
+        env:
+            DB_HOST: 127.0.0.1
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php }}
+                  extensions: pdo_mysql
+                  coverage: none
+
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.composer/cache/files
+                  key: composer-${{ matrix.php }}-${{ matrix.dependencies }}-${{ hashFiles('composer.json') }}
+
+            - run: composer update --${{ matrix.dependencies }} --no-interaction --no-progress
+
+            - run: vendor/bin/pest

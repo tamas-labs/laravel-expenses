@@ -1,0 +1,73 @@
+{
+    "name": "tamas-labs/laravel-expenses",
+    "description": "Laravel sync backend for the Expenses app, built on the tamas-labs/expenses-schema contract.",
+    "keywords": [
+        "laravel",
+        "expenses",
+        "sync",
+        "json-schema"
+    ],
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Tamas Labs",
+            "email": "tbalint78@gmail.com"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/tamas-labs/expenses-schema"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "illuminate/contracts": "^13.0",
+        "illuminate/support": "^13.0",
+        "tamas-labs/expenses-schema": "^1.0.2"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.12",
+        "laravel/pint": "^1.32",
+        "orchestra/testbench": "^11.2",
+        "pestphp/pest": "^4.7 || ^5.2",
+        "pestphp/pest-plugin-laravel": "^4.1 || ^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "TamasLabs\\LaravelExpenses\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "TamasLabs\\LaravelExpenses\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "TamasLabs\\LaravelExpenses\\ExpensesServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "format": "pint",
+        "format:check": "pint --test",
+        "quality": [
+            "@format:check",
+            "@analyse",
+            "@test"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
