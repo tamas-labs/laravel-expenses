@@ -18,3 +18,15 @@ a [Semantic Versioning](https://semver.org/)-et.
   - `ContractViolation` 422-es `protocol/error` borítékkal;
   - `expenses.contract` middleware az `X-Expenses-Contract` fejléc egyeztetésére;
   - paritás-tesztek a schema repó közös fixture-jeivel.
+- Adatmodell:
+  - migrációk minden erőforráshoz, `(user_id, id)` kompozit kulccsal (a kliens seed UUID-jai minden
+    felhasználónál azonosak), felhasználón belüli összetett FK-kkal (`RESTRICT`), és generált
+    oszlopos, byte-pontos egyedi kulcsokkal, amelyek csak az élő rekordokra vonatkoznak;
+  - `datetime(3)` UTC időbélyegek, `double` mennyiségek bitpontos tárolással, JSON szövegoszlopok
+    kulcssorrend-megőrzéssel;
+  - a `currencies` tábla a HUF, EUR és USD sorral, a `sync_sequence` sorszámláló;
+  - a host `users` tábla bővítése (`uuid`, profilmezők), és a `HasExpensesProfile` trait a host User
+    modelljére;
+  - Eloquent modellek (`ownedBy()`, `alive()`, `changedSince()` scope-ok), factory-k;
+  - új config kulcsok: `expenses.user_model`, `expenses.database.table_prefix`;
+  - a migrációk publikálhatók (`expenses-migrations` tag).

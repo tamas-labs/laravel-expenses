@@ -22,15 +22,29 @@ final class ExpensesServiceProvider extends ServiceProvider
     {
         $this->app->make(Router::class)->aliasMiddleware('expenses.contract', EnsureContractVersion::class);
 
+        $this->loadMigrationsFrom(self::migrationsPath());
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 self::configPath() => $this->app->configPath('expenses.php'),
             ], 'expenses-config');
+
+            // Published under their own names: the migrator keys migrations by
+            // name and lets the application's copy win, so a customised copy
+            // replaces the package's instead of running next to it.
+            $this->publishes([
+                self::migrationsPath() => $this->app->databasePath('migrations'),
+            ], 'expenses-migrations');
         }
     }
 
     private static function configPath(): string
     {
         return \dirname(__DIR__).'/config/expenses.php';
+    }
+
+    private static function migrationsPath(): string
+    {
+        return \dirname(__DIR__).'/database/migrations';
     }
 }

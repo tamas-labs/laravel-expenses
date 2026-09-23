@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\ServiceProvider;
 use TamasLabs\LaravelExpenses\Contract\ContractValidator;
 use TamasLabs\LaravelExpenses\ExpensesServiceProvider;
 use TamasLabs\LaravelExpenses\Http\Middleware\EnsureContractVersion;
@@ -30,6 +31,17 @@ it('publishes the config file with the expenses-config tag', function (): void {
     } finally {
         File::delete($target);
     }
+});
+
+it('loads the package migrations', function (): void {
+    expect(app('migrator')->paths())->toContain(dirname(__DIR__, 2).'/database/migrations');
+});
+
+it('publishes the migrations under their own names with the expenses-migrations tag', function (): void {
+    $source = dirname(__DIR__, 2).'/database/migrations';
+
+    expect(ServiceProvider::pathsToPublish(ExpensesServiceProvider::class, 'expenses-migrations'))
+        ->toBe([$source => database_path('migrations')]);
 });
 
 it('binds the contract validator as a singleton', function (): void {

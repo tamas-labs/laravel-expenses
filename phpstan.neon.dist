@@ -6,9 +6,16 @@ parameters:
     paths:
         - src
         - config
+        - database
         - tests
     excludePaths:
         # Pest's arch DSL (`arch()->preset()`, `arch()->expect()`) is chained
         # through TestCall::__call and only resolved at run time, so PHPStan
         # sees nothing but `mixed` there. The file holds no logic; Pest runs it.
         - tests/Architecture
+    ignoreErrors:
+        # The package's own config file: Larastan only recognises the
+        # application's config directory, where this file is published.
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: config/expenses.php
