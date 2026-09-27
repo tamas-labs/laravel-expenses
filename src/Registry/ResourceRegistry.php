@@ -27,6 +27,7 @@ use TamasLabs\LaravelExpenses\Models\ProductPrice;
 use TamasLabs\LaravelExpenses\Models\ShoppingList;
 use TamasLabs\LaravelExpenses\Models\ShoppingListItem;
 use TamasLabs\LaravelExpenses\Models\Subcategory;
+use TamasLabs\LaravelExpenses\Models\SyncModel;
 use TamasLabs\LaravelExpenses\Support\PackageConfig;
 
 /**
@@ -117,6 +118,24 @@ final class ResourceRegistry
         usort($pushable, static fn (ResourceDefinition $a, ResourceDefinition $b): int => $a->applyOrder <=> $b->applyOrder);
 
         return $pushable;
+    }
+
+    /**
+     * The model of a resource whose rows belong to a user.
+     *
+     * @return class-string<SyncModel>
+     *
+     * @throws InvalidArgumentException When the package serves no such resource, or its rows are not owned.
+     */
+    public function ownedModel(string $name): string
+    {
+        $model = $this->get($name)->model;
+
+        if (! is_subclass_of($model, SyncModel::class)) {
+            throw new InvalidArgumentException(sprintf('The rows of the "%s" resource are not owned by a user.', $name));
+        }
+
+        return $model;
     }
 
     /**

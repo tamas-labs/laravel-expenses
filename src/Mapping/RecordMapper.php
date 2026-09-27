@@ -117,6 +117,22 @@ abstract class RecordMapper
     }
 
     /**
+     * One field by its contract name.
+     *
+     * @throws LogicException When the resource has no such field.
+     */
+    public function field(string $name): Field
+    {
+        foreach ($this->describe() as $field) {
+            if ($field->name === $name) {
+                return $field;
+            }
+        }
+
+        throw new LogicException(sprintf('%s has no "%s" field.', static::class, $name));
+    }
+
+    /**
      * The loaded value of a {@see FieldType::Links} field; `null` when the
      * storage layer has not loaded it.
      *

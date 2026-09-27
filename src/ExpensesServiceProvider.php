@@ -9,6 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use TamasLabs\LaravelExpenses\Contract\ContractValidator;
 use TamasLabs\LaravelExpenses\Http\Middleware\EnsureContractVersion;
 use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
+use TamasLabs\LaravelExpenses\Rules\DomainValidator;
 
 final class ExpensesServiceProvider extends ServiceProvider
 {
@@ -18,6 +19,7 @@ final class ExpensesServiceProvider extends ServiceProvider
 
         $this->app->singleton(ContractValidator::class);
         $this->app->singleton(ResourceRegistry::class);
+        $this->app->singleton(DomainValidator::class);
     }
 
     public function boot(): void

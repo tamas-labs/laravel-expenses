@@ -41,3 +41,19 @@ a [Semantic Versioning](https://semver.org/)-et.
   - `JsonText` cast a JSON szövegoszlopokra: a `{}` és a `[]` megkülönböztetve, a kulcssorrend
     megőrizve;
   - a zseb `categoryIds`-e a pivotból, UUID szerint rendezve megy ki.
+- Domain szabályok:
+  - `DomainValidator` (singleton): minden pusholható erőforrás szabályai egy helyen; előbb a
+    rekordszintű (`RecordRule`), majd a tömeges, adatbázist olvasó (`BatchRule`) szabályok, egy rekord
+    minden hibája visszajön;
+  - `RuleContext`: a push eddig elfogadott és elutasított rekordjai, a pusholt rekordok szerverállapota
+    és a pénznemlista, amelyet a szinkron (06) tölt;
+  - `reference`: a hivatkozott rekord a felhasználónál létezik (a tombstone is, a push korábban
+    elfogadott rekordja is, az elutasított nem); más felhasználó rekordjára ugyanaz a hiba jön, mint
+    egy nem létezőre;
+  - `unique`: egyediség az élő rekordok között, byte-pontosan, a push végállapota szerint, a
+    `conflictingId`-vel;
+  - `retired`: kivezetett pénznemet csak az a rekord tarthat meg, amelynek már az volt;
+  - `amountSum`, `sourceExpense`, `archivedAt`: a kiadás összege, az ár forrása és a lista
+    archiválása;
+  - a tömeges szabályok erőforrásonként és táblánként legfeljebb egy lekérdezést futtatnak, a
+    rekordok számától függetlenül.
