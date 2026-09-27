@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace TamasLabs\LaravelExpenses\Rules\Batch;
 
-use Illuminate\Database\Eloquent\Builder;
 use TamasLabs\LaravelExpenses\Contract\ContractIssue;
 use TamasLabs\LaravelExpenses\Models\SyncModel;
 use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
@@ -161,15 +160,12 @@ final class UniqueAmongLiving implements BatchRule
 
         // The column's collation may call more strings equal than the index
         // does; the keys compare byte for byte below.
-        $rows = $this->registry->ownedModel($this->resource)::query()
-            ->ownedBy($context->user)
-            ->alive()
-            ->where(static function (Builder $query) use ($wanted): void {
-                foreach ($wanted as $column => $values) {
-                    $query->orWhereIn($column, array_map(strval(...), array_keys($values)));
-                }
-            })
-            ->get(['id', ...array_values($columns)]);
+        $rows = $context->store->livingConflicts(
+            $this->resource,
+            $context->user,
+            array_map(static fn (array $values): array => array_map(strval(...), array_keys($values)), $wanted),
+            array_values(array_unique($columns)),
+        );
 
         $rowKeys = [];
 

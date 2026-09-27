@@ -54,4 +54,34 @@ final class SyncSequence
 
         return $last;
     }
+
+    /**
+     * The counter as committed: the last reserved number, and the highest
+     * `server_seq` whose tombstones were pruned (spec 06, 4.6).
+     *
+     * Read without a lock. Transactions that reserve commit in the order of
+     * their numbers, so every row up to `value` is committed and visible to
+     * any later read (spec 06, 4.2).
+     *
+     * @return array{value: int, prunedThrough: int}
+     *
+     * @throws LogicException When the counter row is missing.
+     */
+    public static function state(): array
+    {
+        $row = DB::table(PackageConfig::table(self::TABLE))->where('id', 1)->first(['value', 'pruned_through']);
+
+        if (! \is_object($row)) {
+            throw new LogicException('The sync_sequence row is missing; run the package migrations.');
+        }
+
+        $value = $row->value ?? null;
+        $prunedThrough = $row->pruned_through ?? null;
+
+        if (! \is_int($value) || ! \is_int($prunedThrough)) {
+            throw new LogicException('The sync_sequence columns must hold integers.');
+        }
+
+        return ['value' => $value, 'prunedThrough' => $prunedThrough];
+    }
 }

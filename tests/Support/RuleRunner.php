@@ -10,6 +10,7 @@ use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
 use TamasLabs\LaravelExpenses\Rules\DomainValidator;
 use TamasLabs\LaravelExpenses\Rules\RecordFields;
 use TamasLabs\LaravelExpenses\Rules\RuleContext;
+use TamasLabs\LaravelExpenses\Sync\SyncStore;
 use TamasLabs\LaravelExpenses\Tests\Fixtures\User;
 use TamasLabs\LaravelExpenses\Tests\TestCase;
 
@@ -27,7 +28,7 @@ final class RuleRunner
      */
     public static function push(User $user, array $push, ?RuleContext $context = null): array
     {
-        $context ??= new RuleContext($user);
+        $context ??= new RuleContext($user, app(SyncStore::class));
         $results = [];
 
         foreach (app(ResourceRegistry::class)->pushable() as $definition) {
@@ -79,13 +80,6 @@ final class RuleRunner
      */
     public static function loadExisting(RuleContext $context, string $resource, array $records): void
     {
-        $model = app(ResourceRegistry::class)->ownedModel($resource);
-        $rows = [];
-
-        foreach ($model::query()->ownedBy($context->user)->whereKey(array_map(RecordFields::id(...), $records))->get() as $row) {
-            $rows[$row->id] = $row;
-        }
-
-        $context->setExisting($resource, $rows);
+        $context->setExisting($resource, $context->store->existing($resource, $context->user, array_map(RecordFields::id(...), $records)));
     }
 }

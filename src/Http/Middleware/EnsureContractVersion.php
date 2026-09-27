@@ -16,10 +16,29 @@ use TamasLabs\LaravelExpenses\Support\Json;
  * Rejects requests from clients on an incompatible contract version, and tells
  * every client — on every response — which version the server speaks.
  *
+ * The client's version stays on the request ({@see self::clientVersion()}):
+ * an older client neither gets nor may push the resources it does not know.
+ *
  * Alias: `expenses.contract`.
  */
 final class EnsureContractVersion
 {
+    /**
+     * The request attribute holding the client's {@see ContractVersion}.
+     */
+    public const string CLIENT_VERSION = 'expenses.contract_version';
+
+    /**
+     * The contract version the client sent; the server's own when the request
+     * did not pass this middleware.
+     */
+    public static function clientVersion(Request $request): ContractVersion
+    {
+        $version = $request->attributes->get(self::CLIENT_VERSION);
+
+        return $version instanceof ContractVersion ? $version : ContractVersion::current();
+    }
+
     /**
      * @param  Closure(Request): Response  $next
      */
@@ -52,6 +71,8 @@ final class EnsureContractVersion
                 'serverVersion' => (string) $server,
             ]);
         }
+
+        $request->attributes->set(self::CLIENT_VERSION, $client);
 
         return null;
     }

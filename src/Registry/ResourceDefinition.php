@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TamasLabs\LaravelExpenses\Registry;
 
 use Illuminate\Database\Eloquent\Model;
+use TamasLabs\LaravelExpenses\Contract\ContractVersion;
 use TamasLabs\LaravelExpenses\Mapping\RecordMapper;
 
 /**
@@ -29,4 +30,13 @@ final readonly class ResourceDefinition
         public ?int $applyOrder,
         public string $since,
     ) {}
+
+    /**
+     * Whether a client on the given contract version knows the resource: an
+     * older client neither gets it in a pull nor may push it (spec 06, 3.4).
+     */
+    public function knownBy(ContractVersion $client): bool
+    {
+        return $client->accepts(ContractVersion::parse($this->since));
+    }
 }

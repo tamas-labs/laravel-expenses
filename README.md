@@ -63,6 +63,27 @@ csomagtábla elé prefixet tesz. **Az első migrálás előtt kell beállítani*
 Testre szabáshoz a migrációk publikálhatók (`--tag=expenses-migrations`). A másolat az eredeti
 fájlnevekkel kerül a `database/migrations` könyvtárba, és a csomagé helyett fut, nem mellette.
 
+## Szinkron végpontok
+
+A csomag két route-ot regisztrál az `expenses.routes.prefix` (alapértelmezés: `api/expenses`) alatt:
+
+| Végpont                                 | Név                  | Törzs / válasz                    |
+| --------------------------------------- | -------------------- | --------------------------------- |
+| `POST …/sync/push`                      | `expenses.sync.push` | `push-request` → `push-response`  |
+| `GET …/sync/pull?cursor=<c>&limit=<n>`  | `expenses.sync.pull` | — → `pull-response`               |
+
+Az alakokat és a protokoll szabályait (LWW, cursor, hibakódok) a
+[`tamas-labs/expenses-schema`](https://github.com/tamas-labs/expenses-schema) README-je írja le.
+Mindkét route hitelesített felhasználót kér, és megkapja az `expenses.routes.middleware`
+middleware-eit (alapértelmezés: `api`, `expenses.contract`). Az `expenses.contract` maradjon a
+listában: ez egyezteti a kliens szerződésverzióját. A korlátok az `expenses.sync` alatt
+állíthatók: legfeljebb 500 rekord egy push-ban, a pull lapmérete alapértelmezésben 500, legfeljebb
+1000.
+
+Ha egy push az adatbázisba is írt, a commit után a csomag
+`TamasLabs\LaravelExpenses\Sync\Events\RecordsPushed` eseményt küld: benne a felhasználó és az
+erőforrásonként írt rekordok száma. A host app figyelhet rá, a csomag maga nem használja.
+
 ## Fejlesztés
 
 Minden parancs Dockerben fut (PHP 8.4 és MySQL 8.4):

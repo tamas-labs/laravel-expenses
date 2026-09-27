@@ -129,6 +129,30 @@ final class DomainValidator
     }
 
     /**
+     * The fields the resource's unique keys (S2) are made of, the fields they
+     * are unique within included: a row changing any of them may move to
+     * another key.
+     *
+     * @return list<string>
+     *
+     * @throws InvalidArgumentException When the resource has no rules.
+     */
+    public function uniqueFields(string $resource): array
+    {
+        $fields = [];
+
+        foreach ($this->batchRules($resource) as $rule) {
+            if ($rule instanceof UniqueAmongLiving) {
+                foreach ($rule->keys as $field => $within) {
+                    array_push($fields, $field, ...$within);
+                }
+            }
+        }
+
+        return array_values(array_unique($fields));
+    }
+
+    /**
      * @return list<RecordRule>
      *
      * @throws InvalidArgumentException When the resource has no rules.

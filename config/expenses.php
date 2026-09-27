@@ -32,4 +32,39 @@ return [
 
     ],
 
+    'routes' => [
+
+        /*
+         * The URI prefix of the sync endpoints: POST {prefix}/sync/push and
+         * GET {prefix}/sync/pull.
+         */
+        'prefix' => env('EXPENSES_ROUTE_PREFIX', 'api/expenses'),
+
+        /*
+         * The middleware in front of the sync endpoints. Keep
+         * `expenses.contract`: it checks the client's contract version and
+         * tells which resources the client knows. Authentication is added by
+         * the package itself, not here.
+         */
+        'middleware' => ['api', 'expenses.contract'],
+
+    ],
+
+    'sync' => [
+
+        /*
+         * The most records one push may carry; a client splits a larger set
+         * of changes into several pushes.
+         */
+        'push_max_records' => 500,
+
+        /*
+         * The records one pull page holds when the client asks for no limit,
+         * and the most it may ask for.
+         */
+        'pull_default_limit' => 500,
+        'pull_max_limit' => 1000,
+
+    ],
+
 ];

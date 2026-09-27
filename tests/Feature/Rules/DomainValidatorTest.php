@@ -16,6 +16,7 @@ use TamasLabs\LaravelExpenses\Rules\DomainValidator;
 use TamasLabs\LaravelExpenses\Rules\RecordFields;
 use TamasLabs\LaravelExpenses\Rules\RuleContext;
 use TamasLabs\LaravelExpenses\Support\PackageConfig;
+use TamasLabs\LaravelExpenses\Sync\SyncStore;
 use TamasLabs\LaravelExpenses\Tests\Fixtures\User;
 use TamasLabs\LaravelExpenses\Tests\Support\Records;
 use TamasLabs\LaravelExpenses\Tests\Support\RuleRunner;
@@ -32,7 +33,7 @@ it('has rules for exactly the pushable resources', function (): void {
 });
 
 it('has no rules for what a client cannot push', function (string $resource): void {
-    app(DomainValidator::class)->validate($resource, [], new RuleContext(User::factory()->createOne()));
+    app(DomainValidator::class)->validate($resource, [], new RuleContext(User::factory()->createOne(), app(SyncStore::class)));
 })->with(['user', 'currency'])->throws(InvalidArgumentException::class, 'not pushable');
 
 it('is a singleton', function (): void {
@@ -82,7 +83,7 @@ it('runs the batch rules only on the records the record rules passed', function 
 
 it('keeps the indexes of the records it gets', function (): void {
     $user = User::factory()->createOne();
-    $context = new RuleContext($user);
+    $context = new RuleContext($user, app(SyncStore::class));
     $context->setExisting('category', []);
 
     $issues = app(DomainValidator::class)->validate('category', [3 => Records::make('category'), 7 => Records::make('category')], $context);
@@ -91,7 +92,7 @@ it('keeps the indexes of the records it gets', function (): void {
 });
 
 it('needs the server\'s rows of the records to judge a currency change', function (): void {
-    app(DomainValidator::class)->validate('expense', [Records::make('expense')], new RuleContext(User::factory()->createOne()));
+    app(DomainValidator::class)->validate('expense', [Records::make('expense')], new RuleContext(User::factory()->createOne(), app(SyncStore::class)));
 })->throws(LogicException::class, 'no server rows for the expense records');
 
 /**
@@ -172,7 +173,7 @@ function largePushParents(User $user, array $push, int $i): array
  */
 function countRuleQueries(User $user, array $push): array
 {
-    $context = new RuleContext($user);
+    $context = new RuleContext($user, app(SyncStore::class));
     $counts = [];
     $current = null;
 

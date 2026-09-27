@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -9,6 +10,9 @@ use Illuminate\Support\ServiceProvider;
 use TamasLabs\LaravelExpenses\Contract\ContractValidator;
 use TamasLabs\LaravelExpenses\ExpensesServiceProvider;
 use TamasLabs\LaravelExpenses\Http\Middleware\EnsureContractVersion;
+use TamasLabs\LaravelExpenses\Sync\PullHandler;
+use TamasLabs\LaravelExpenses\Sync\PushHandler;
+use TamasLabs\LaravelExpenses\Sync\SyncStore;
 
 it('loads the service provider', function (): void {
     expect(app()->getProviders(ExpensesServiceProvider::class))->toHaveCount(1);
@@ -51,3 +55,26 @@ it('binds the contract validator as a singleton', function (): void {
 it('registers the contract version middleware alias', function (): void {
     expect(app(Router::class)->getMiddleware())->toHaveKey('expenses.contract', EnsureContractVersion::class);
 });
+
+it('registers the sync routes under the configured prefix, behind the configured middleware and authentication', function (string $name, string $method, string $uri): void {
+    $route = app(Router::class)->getRoutes()->getByName($name);
+
+    expect($route)->not->toBeNull()
+        ->and($route?->methods())->toContain($method)
+        ->and($route?->uri())->toBe($uri)
+        ->and($route?->gatherMiddleware())->toBe(['api', 'expenses.contract', 'auth']);
+})->with([
+    ['expenses.sync.push', 'POST', 'api/expenses/sync/push'],
+    ['expenses.sync.pull', 'GET', 'api/expenses/sync/pull'],
+]);
+
+it('runs the contract version middleware before any other, authentication included', function (): void {
+    // The priority goes onto the HTTP kernel when it is resolved.
+    app(Kernel::class);
+
+    expect(app(Router::class)->middlewarePriority[0] ?? null)->toBe(EnsureContractVersion::class);
+});
+
+it('binds the sync services as singletons', function (string $class): void {
+    expect(app($class))->toBe(app($class));
+})->with([SyncStore::class, PushHandler::class, PullHandler::class]);

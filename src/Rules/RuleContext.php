@@ -6,13 +6,14 @@ namespace TamasLabs\LaravelExpenses\Rules;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use LogicException;
-use TamasLabs\LaravelExpenses\Models\Currency;
 use TamasLabs\LaravelExpenses\Models\SyncModel;
+use TamasLabs\LaravelExpenses\Sync\SyncStore;
 
 /**
  * What the rules know about one push beyond the server's tables: the user,
  * the records the push has accepted or rejected so far, and the server's
- * version of the records being checked.
+ * version of the records being checked. The tables themselves are read
+ * through the {@see SyncStore}.
  *
  * The sync (spec 06) fills it in as it goes, resource by resource in the
  * push order: a record accepted earlier exists for the resources after it.
@@ -41,7 +42,10 @@ final class RuleContext
      */
     private ?array $currencies = null;
 
-    public function __construct(public readonly Authenticatable $user) {}
+    public function __construct(
+        public readonly Authenticatable $user,
+        public readonly SyncStore $store,
+    ) {}
 
     /**
      * A record of the push passed; it exists (and, if alive, holds its unique
@@ -111,14 +115,6 @@ final class RuleContext
      */
     public function currencies(): array
     {
-        if ($this->currencies === null) {
-            $this->currencies = [];
-
-            foreach (Currency::query()->get(['id', 'deleted_at']) as $currency) {
-                $this->currencies[$currency->id] = $currency->deleted_at !== null;
-            }
-        }
-
-        return $this->currencies;
+        return $this->currencies ??= $this->store->currencies();
     }
 }

@@ -57,3 +57,25 @@ a [Semantic Versioning](https://semver.org/)-et.
     archiválása;
   - a tömeges szabályok erőforrásonként és táblánként legfeljebb egy lekérdezést futtatnak, a
     rekordok számától függetlenül.
+- Szinkron motor és API:
+  - `POST {prefix}/sync/push`: rekordonkénti eredmény (`accepted`, `stale` a szerver változatával,
+    `rejected` a hibákkal), a kérés csoportosításában és sorrendjében. Egy tranzakcióban,
+    függőségi sorrendben alkalmazva: egy szülő és a gyereke egy push-ban is mehet;
+  - LWW: a későbbi `updatedAt` nyer (ezredmásodpercre, időpontként), döntetlennél a szerver; a
+    törlés is módosítás, egy újabb élő változat feltámasztja a rekordot;
+  - a push idempotens: a változatlan rekord nem íródik, és nem kap új sorszámot;
+  - két rekord egy push-ban nevet cserélhet;
+  - boríték-szintű hibák a `protocol/error` borítékkal: `contract_violation`,
+    `resource_not_writable`, `duplicate_record`, `too_many_records`;
+  - `GET {prefix}/sync/pull?cursor=…&limit=…`: minden változás egy globális, átlátszatlan cursor
+    óta, tombstone-okkal, lapozva. A `user` csoport a saját fiók rekordját, a `currency` a
+    pénznemeket hozza. `cursor_malformed` (422), `cursor_expired` (410);
+  - a régebbi minor verziójú kliens nem kapja meg és nem pusholhatja az újabb erőforrásokat;
+  - a sorszámot foglaló tranzakciók a sorszámok sorrendjében commitolnak, és a pull a kezdetekor
+    commitolt sorszámig olvas, így párhuzamos push-ok mellett sem hagy ki változást;
+  - `SyncStore`: a szinkronizált táblák minden lekérdezése egy helyen, tulajdonosra szűrve (a domain
+    szabályoké is), teszt tiltja a megkerülését;
+  - `RecordsPushed` esemény a commit után, ha a push írt;
+  - új config kulcsok: `expenses.routes.prefix`, `expenses.routes.middleware`,
+    `expenses.sync.push_max_records`, `expenses.sync.pull_default_limit`,
+    `expenses.sync.pull_max_limit`.

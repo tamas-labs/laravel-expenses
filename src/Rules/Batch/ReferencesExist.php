@@ -129,15 +129,6 @@ final class ReferencesExist implements BatchRule
             return array_fill_keys(array_keys(array_intersect_key($context->currencies(), array_flip($ids))), true);
         }
 
-        $model = $this->registry->ownedModel($target);
-        $found = [];
-
-        foreach ($model::query()->ownedBy($context->user)->whereIn('id', $ids)->pluck('id') as $id) {
-            if (\is_string($id)) {
-                $found[$id] = true;
-            }
-        }
-
-        return $found;
+        return $context->store->referencesExist($target, $context->user, $ids);
     }
 }
