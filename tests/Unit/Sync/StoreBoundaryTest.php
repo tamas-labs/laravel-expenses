@@ -5,14 +5,16 @@ declare(strict_types=1);
 // Spec 06, 5.4 and 8/4: only the SyncStore queries the synced tables, so every
 // query of them is filtered by the owner in one place. Pest's arch DSL tells
 // which classes use which, not who starts a query, so the source is scanned
-// for the calls that do.
+// for the calls that do. The account tables (spec 07) have a store of their
+// own, which queries no synced table.
 
 const MODELS_NAMESPACE = 'TamasLabs\\LaravelExpenses\\Models\\';
 
 /**
- * The files that may query: the store, and the sequence counter it uses.
+ * The files that may query: the store, the sequence counter it uses, and the
+ * store of the account tables.
  */
-const QUERYING_FILES = ['src/Sync/SyncStore.php', 'src/Database/SyncSequence.php'];
+const QUERYING_FILES = ['src/Sync/SyncStore.php', 'src/Database/SyncSequence.php', 'src/Auth/AccountStore.php'];
 
 /**
  * The DB facade's calls that run or start a query (not `transaction()`).

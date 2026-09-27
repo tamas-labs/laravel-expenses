@@ -21,6 +21,7 @@ const SCRATCH_DATABASE = 'expenses_migrations_test';
 const PACKAGE_TABLES = [
     'sync_sequence', 'currencies', 'categories', 'subcategories', 'payment_methods', 'expenses', 'products',
     'product_prices', 'shopping_lists', 'shopping_list_items', 'budget_pockets', 'budget_pocket_categories',
+    'devices', 'refresh_tokens',
 ];
 
 const PROFILE_COLUMNS = ['uuid', 'default_currency_id', 'registered_at', 'profile_created_at', 'profile_updated_at', 'server_seq'];

@@ -15,7 +15,8 @@ return [
     /*
      * The host application's Eloquent user model. Its table gets the profile
      * columns of the contract's `user` record, and every synced row belongs
-     * to one of its rows. The model must use the HasExpensesProfile trait.
+     * to one of its rows. The model must use the HasExpensesProfile and
+     * Sanctum's HasApiTokens traits, and implement MustVerifyEmail.
      */
     'user_model' => env('EXPENSES_USER_MODEL', 'App\\Models\\User'),
 
@@ -35,18 +36,48 @@ return [
     'routes' => [
 
         /*
-         * The URI prefix of the sync endpoints: POST {prefix}/sync/push and
-         * GET {prefix}/sync/pull.
+         * The URI prefix of the endpoints: {prefix}/sync/…, {prefix}/auth/…
+         * and {prefix}/me.
          */
         'prefix' => env('EXPENSES_ROUTE_PREFIX', 'api/expenses'),
 
         /*
-         * The middleware in front of the sync endpoints. Keep
-         * `expenses.contract`: it checks the client's contract version and
-         * tells which resources the client knows. Authentication is added by
-         * the package itself, not here.
+         * The middleware in front of the endpoints. Keep `expenses.contract`:
+         * it checks the client's contract version and tells which resources
+         * the client knows. Authentication (a Sanctum token with the
+         * `expenses:access` ability) is added by the package itself, not here.
          */
         'middleware' => ['api', 'expenses.contract'],
+
+    ],
+
+    'auth' => [
+
+        /*
+         * How long an access token and a refresh token are valid, in minutes.
+         * Every refresh hands out a new refresh token, so a client that syncs
+         * at least once per refresh_ttl stays signed in.
+         */
+        'access_ttl' => 60,
+        'refresh_ttl' => 60 * 24 * 90,
+
+        /*
+         * The link in the password reset mail: an app deep link or a page of
+         * the host, with the {token} and {email} placeholders. Required.
+         */
+        'password_reset_url' => env('EXPENSES_PASSWORD_RESET_URL'),
+
+        /*
+         * Where the email verification link leads once it is opened; an
+         * invalid or expired link gets `status=invalid` appended. Required.
+         */
+        'email_verified_url' => env('EXPENSES_EMAIL_VERIFIED_URL'),
+
+        /*
+         * Whether the sync and profile changes wait for a verified email
+         * address (403 email_not_verified until then).
+         */
+        'require_verified_email' => false,
 
     ],
 

@@ -52,6 +52,38 @@ final class Records
     }
 
     /**
+     * One record of every pushable resource, linked as a client's data is:
+     * the children point at the parents of the same set.
+     *
+     * @return array<string, list<stdClass>> Resource → records, in the push order.
+     */
+    public static function graph(): array
+    {
+        $category = self::make('category');
+        $subcategory = self::make('subcategory', ['categoryId' => $category->id]);
+        $paymentMethod = self::make('payment-method');
+        $expense = self::make('expense', [
+            'mainCategoryId' => $category->id,
+            'subCategoryId' => $subcategory->id,
+            'paymentMethodId' => $paymentMethod->id,
+        ]);
+        $product = self::make('product', ['mainCategoryId' => $category->id, 'subCategoryId' => $subcategory->id]);
+        $list = self::make('shopping-list');
+
+        return [
+            'category' => [$category],
+            'subcategory' => [$subcategory],
+            'payment-method' => [$paymentMethod],
+            'expense' => [$expense],
+            'product' => [$product],
+            'product-price' => [self::make('product-price', ['productId' => $product->id, 'source' => 'expense', 'sourceExpenseId' => $expense->id])],
+            'shopping-list' => [$list],
+            'shopping-list-item' => [self::make('shopping-list-item', ['shoppingListId' => $list->id])],
+            'budget-pocket' => [self::make('budget-pocket', ['categoryIds' => [$category->id]])],
+        ];
+    }
+
+    /**
      * Makes the record and stores it as the user's, as if an earlier push had.
      *
      * @param  array<string, mixed>  $fields

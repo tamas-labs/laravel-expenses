@@ -79,3 +79,28 @@ a [Semantic Versioning](https://semver.org/)-et.
   - új config kulcsok: `expenses.routes.prefix`, `expenses.routes.middleware`,
     `expenses.sync.push_max_records`, `expenses.sync.pull_default_limit`,
     `expenses.sync.pull_max_limit`.
+- Felhasználó és hitelesítés:
+  - `POST {prefix}/auth/register` és `…/auth/login`: e-mail (trimmelve, kisbetűsítve), jelszó és
+    `deviceId` → a `user` rekord, az eszköz tokenpárja és az `account` állapot (`emailVerified`).
+    A kérések a szerződés `protocol/` dokumentumai szerint validálódnak (`validation_failed`), a
+    foglalt e-mail `email_taken`;
+  - access token: Sanctum personal access token eszközönként, `expenses:access` képességgel, 60 perc;
+    refresh token: saját `refresh_tokens` tábla (csak a SHA-256 hash-e), 90 napos csúszó lejárattal,
+    rotációval és újrafelhasználás-észleléssel (`refresh_token_reused`);
+  - `devices` tábla: egy eszköz egyszerre egy fiókhoz tartozik, egy másik fiókba belépve átkerül, és a
+    régi fiók tokenjei rajta visszavonódnak; `POST …/auth/logout` leválasztja;
+  - a bejelentkezés egyetlen általános hibája (`invalid_credentials`), ál-hash ellenőrzés nem létező
+    fióknál, fékezés (`too_many_attempts`, `Retry-After`);
+  - `GET`, `PATCH` (LWW, csak a `displayName`, a `defaultCurrencyId` és az `updatedAt` írható,
+    `field_not_writable`) és `DELETE {prefix}/me` (jelszóval, a fiók minden adatával együtt;
+    `DeleteAccount` szolgáltatás a host webes törlőoldalához, `AccountDeleted` esemény);
+  - jelszó-visszaállítás a Laravel password brokerével (mindig 202, siker után minden token és eszköz
+    visszavonva) és e-mail-megerősítés `MustVerifyEmail`-lel (aláírt link a szerződésbeli `uuid`-dal,
+    átirányítás a beállított oldalra); a megerősítés configgal a szinkron feltétele lehet;
+  - a levelek a kérés nyelvén (`hu`, `en`), magyar fordítással;
+  - a szinkron route-ok `auth:sanctum` és `expenses:access` képesség mögött; a 401 és a 403 a
+    szerződés hibaborítékában (`unauthenticated`, `forbidden`);
+  - a jelszó és a tokenek nem kerülnek naplóba (`dontFlash`, `#[SensitiveParameter]`);
+  - új függőség: `laravel/sanctum`; új config kulcsok: `expenses.auth.access_ttl`,
+    `expenses.auth.refresh_ttl`, `expenses.auth.password_reset_url`,
+    `expenses.auth.email_verified_url`, `expenses.auth.require_verified_email`.

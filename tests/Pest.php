@@ -10,6 +10,7 @@ pest()->extend(TestCase::class)->in('Feature');
 // Migrated once per run, each test in a rolled-back transaction. Tests that
 // run DDL (which commits implicitly in MySQL) live outside these directories.
 pest()->use(RefreshDatabase::class)->in(
+    'Feature/Auth',
     'Feature/Database',
     'Feature/Mapping',
     'Feature/Registry',

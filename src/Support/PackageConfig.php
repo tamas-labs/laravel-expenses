@@ -104,6 +104,57 @@ final class PackageConfig
     }
 
     /**
+     * How long an access token is valid, in minutes (`expenses.auth.access_ttl`).
+     */
+    public static function accessTtl(): int
+    {
+        return self::positiveInt('expenses.auth.access_ttl');
+    }
+
+    /**
+     * How long a refresh token is valid, in minutes (`expenses.auth.refresh_ttl`).
+     */
+    public static function refreshTtl(): int
+    {
+        return self::positiveInt('expenses.auth.refresh_ttl');
+    }
+
+    /**
+     * The link template of the password reset mail (`expenses.auth.password_reset_url`).
+     *
+     * @throws InvalidArgumentException When it is missing or has no {token} placeholder.
+     */
+    public static function passwordResetUrl(): string
+    {
+        $url = self::requiredString('expenses.auth.password_reset_url', 'EXPENSES_PASSWORD_RESET_URL');
+
+        if (! str_contains($url, '{token}')) {
+            throw new InvalidArgumentException('The expenses.auth.password_reset_url setting must hold the {token} placeholder.');
+        }
+
+        return $url;
+    }
+
+    /**
+     * Where an opened email verification link leads (`expenses.auth.email_verified_url`).
+     *
+     * @throws InvalidArgumentException When it is missing.
+     */
+    public static function emailVerifiedUrl(): string
+    {
+        return self::requiredString('expenses.auth.email_verified_url', 'EXPENSES_EMAIL_VERIFIED_URL');
+    }
+
+    /**
+     * Whether the sync and profile changes wait for a verified email
+     * (`expenses.auth.require_verified_email`).
+     */
+    public static function requireVerifiedEmail(): bool
+    {
+        return Config::boolean('expenses.auth.require_verified_email', false);
+    }
+
+    /**
      * The most records one push may carry (`expenses.sync.push_max_records`).
      */
     public static function pushMaxRecords(): int
@@ -125,6 +176,20 @@ final class PackageConfig
     public static function pullMaxLimit(): int
     {
         return self::positiveInt('expenses.sync.pull_max_limit');
+    }
+
+    /**
+     * @throws InvalidArgumentException When the setting is missing or empty.
+     */
+    private static function requiredString(string $key, string $env): string
+    {
+        $value = Config::get($key);
+
+        if (! \is_string($value) || trim($value) === '') {
+            throw new InvalidArgumentException(sprintf('The %s setting is required; set %s.', $key, $env));
+        }
+
+        return $value;
     }
 
     /**

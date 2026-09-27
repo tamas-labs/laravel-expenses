@@ -57,30 +57,9 @@ function fullPush(int $rounds): array
     $push = [];
 
     for ($round = 0; $round < $rounds; $round++) {
-        $category = Records::make('category');
-        $subcategory = Records::make('subcategory', ['categoryId' => $category->id]);
-        $paymentMethod = Records::make('payment-method');
-        $expense = Records::make('expense', [
-            'mainCategoryId' => $category->id,
-            'subCategoryId' => $subcategory->id,
-            'paymentMethodId' => $paymentMethod->id,
-        ]);
-        $product = Records::make('product', ['mainCategoryId' => $category->id, 'subCategoryId' => $subcategory->id]);
-        $list = Records::make('shopping-list');
-
-        $push['category'][] = $category;
-        $push['subcategory'][] = $subcategory;
-        $push['payment-method'][] = $paymentMethod;
-        $push['expense'][] = $expense;
-        $push['product'][] = $product;
-        $push['product-price'][] = Records::make('product-price', [
-            'productId' => $product->id,
-            'source' => 'expense',
-            'sourceExpenseId' => $expense->id,
-        ]);
-        $push['shopping-list'][] = $list;
-        $push['shopping-list-item'][] = Records::make('shopping-list-item', ['shoppingListId' => $list->id]);
-        $push['budget-pocket'][] = Records::make('budget-pocket', ['categoryIds' => [$category->id]]);
+        foreach (Records::graph() as $resource => $records) {
+            $push[$resource] = [...$push[$resource] ?? [], ...$records];
+        }
     }
 
     return $push;

@@ -156,6 +156,23 @@ function schemaExpectedTables(): array
             'budget_pocket_id' => SCHEMA_UUID,
             'category_id' => SCHEMA_UUID,
         ],
+        // Spec 07, 4.1 and 4.2.
+        'devices' => [
+            'id' => 'bigint unsigned',
+            'device_id' => SCHEMA_UUID,
+            'user_id' => 'bigint unsigned',
+            'linked_at' => 'datetime(3)',
+            'last_seen_at' => 'datetime(3)',
+        ],
+        'refresh_tokens' => [
+            'id' => 'bigint unsigned',
+            'user_id' => 'bigint unsigned',
+            'device_id' => SCHEMA_UUID,
+            'family' => SCHEMA_UUID,
+            'token_hash' => 'char(64) ascii_bin',
+            'expires_at' => 'datetime(3)',
+            'used_at' => 'datetime(3) null',
+        ],
     ];
 }
 
@@ -190,9 +207,13 @@ it('keys every table as spec 03 says', function (): void {
         'currencies PRIMARY(id)',
         'currencies UNIQUE(code)',
         'currencies UNIQUE(server_seq)',
+        'devices PRIMARY(id)',
+        'devices UNIQUE(device_id)',
         'payment_methods UNIQUE(user_id,name_key)',
         'products UNIQUE(user_id,barcode_key)',
         'products UNIQUE(user_id,normalized_name_key)',
+        'refresh_tokens PRIMARY(id)',
+        'refresh_tokens UNIQUE(token_hash)',
         'subcategories UNIQUE(user_id,category_id,name_key)',
         'sync_sequence PRIMARY(id)',
         'users PRIMARY(id)',
@@ -239,7 +260,7 @@ it('links the tables with RESTRICT foreign keys, within one user', function (): 
     ];
 
     foreach (['categories', 'subcategories', 'payment_methods', 'expenses', 'products', 'product_prices',
-        'shopping_lists', 'shopping_list_items', 'budget_pockets', 'budget_pocket_categories'] as $table) {
+        'shopping_lists', 'shopping_list_items', 'budget_pockets', 'budget_pocket_categories', 'devices', 'refresh_tokens'] as $table) {
         $expected[] = "{$table}(user_id) -> {$user}";
     }
 

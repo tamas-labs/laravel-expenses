@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
 use TamasLabs\ExpensesSchema\ExpensesSchema;
+use TamasLabs\LaravelExpenses\Auth\AccountStore;
 use TamasLabs\LaravelExpenses\Mapping\RecordMapper;
 use TamasLabs\LaravelExpenses\Registry\ResourceDefinition;
 use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
@@ -101,9 +102,16 @@ it('pushes every parent before its children', function (): void {
 
     expect($foreignKeys)->not->toBeEmpty();
 
+    // The account tables (spec 07) only point at the user; nothing is pushed into them.
+    $accountTables = [PackageConfig::table(AccountStore::DEVICES), PackageConfig::table(AccountStore::REFRESH_TOKENS)];
+
     foreach ($foreignKeys as $foreignKey) {
         ['child' => $childTable, 'parent' => $parentTable] = (array) $foreignKey;
         assert(is_string($childTable) && is_string($parentTable));
+
+        if (in_array($childTable, $accountTables, true)) {
+            continue;
+        }
         expect($resourceOf)->toHaveKeys([$childTable, $parentTable]);
 
         $child = $registry->get($resourceOf[$childTable]);

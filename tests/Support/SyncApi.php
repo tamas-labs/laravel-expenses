@@ -7,9 +7,11 @@ namespace TamasLabs\LaravelExpenses\Tests\Support;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Assert;
 use stdClass;
 use Symfony\Component\HttpFoundation\Response;
+use TamasLabs\LaravelExpenses\Auth\DeviceSessions;
 use TamasLabs\LaravelExpenses\Contract\ContractVersion;
 use TamasLabs\LaravelExpenses\Database\Currencies;
 use TamasLabs\LaravelExpenses\Database\SyncSequence;
@@ -18,7 +20,6 @@ use TamasLabs\LaravelExpenses\Support\PackageConfig;
 use TamasLabs\LaravelExpenses\Tests\Fixtures\User;
 use TamasLabs\LaravelExpenses\Tests\TestCase;
 
-use function Pest\Laravel\actingAs;
 use function Pest\Laravel\call;
 
 /**
@@ -77,7 +78,7 @@ final class SyncApi
      */
     public static function pushRaw(User $user, string $body, ?string $version = null): TestResponse
     {
-        actingAs($user);
+        self::actingAs($user);
 
         return call('POST', route('expenses.sync.push'), [], [], [], self::server($version), $body);
     }
@@ -99,7 +100,7 @@ final class SyncApi
      */
     public static function pull(User $user, ?string $cursor = null, int|string|null $limit = null, ?string $version = null): TestResponse
     {
-        actingAs($user);
+        self::actingAs($user);
 
         $query = array_filter(['cursor' => $cursor, 'limit' => $limit], static fn (int|string|null $value): bool => $value !== null);
 
@@ -231,6 +232,15 @@ final class SyncApi
         $body = Json::decode((string) $response->getContent());
 
         return $body instanceof stdClass ? $body : self::fail('The response is not an object.');
+    }
+
+    /**
+     * Authenticates the next request with a Sanctum token holding the sync's
+     * ability; the real tokens are the account tests' (spec 07).
+     */
+    private static function actingAs(User $user): void
+    {
+        Sanctum::actingAs($user, [DeviceSessions::ABILITY]);
     }
 
     /**

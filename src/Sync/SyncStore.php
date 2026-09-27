@@ -63,6 +63,41 @@ final class SyncStore
     }
 
     /**
+     * The user's row as stored now: under {@see self::lockUser()}, the
+     * version a profile change is decided against (spec 07, 5.5).
+     *
+     * @throws LogicException When the user has no row.
+     */
+    public function account(Authenticatable $user): Model
+    {
+        return PackageConfig::userModel()::query()->whereKey($user->getAuthIdentifier())->first()
+            ?? throw new LogicException('The user has no row.');
+    }
+
+    /**
+     * Saves the user's row — a new account or a changed profile — with a
+     * reserved sequence number, so the pull carries it to the other devices.
+     */
+    public function saveAccount(Model $user, int $seq): void
+    {
+        $user->forceFill(['server_seq' => $seq])->save();
+    }
+
+    /**
+     * Deletes every synced row of the user (spec 07, 5.6): the pockets'
+     * pivot first, then the resources against the push order, children
+     * before their parents, as the RESTRICT foreign keys ask.
+     */
+    public function deleteOwnedData(Authenticatable $user): void
+    {
+        DB::table(PackageConfig::table(self::POCKET_CATEGORIES))->where('user_id', $user->getAuthIdentifier())->delete();
+
+        foreach (array_reverse($this->registry->pushable()) as $definition) {
+            $this->owned($definition->name, $user)->delete();
+        }
+    }
+
+    /**
      * The server's version of the given records of the user, by id; a pocket
      * with its categories loaded.
      *
