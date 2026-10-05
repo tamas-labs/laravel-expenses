@@ -16,10 +16,12 @@ use TamasLabs\LaravelExpenses\Http\Middleware\EnsureContractVersion;
 use TamasLabs\LaravelExpenses\Support\Json;
 use TamasLabs\LaravelExpenses\Sync\ProtocolError;
 use TamasLabs\LaravelExpenses\Sync\PushHandler;
+use TamasLabs\LaravelExpenses\Sync\PushLog;
 
 /**
  * `POST {prefix}/sync/push` (spec 06, 3.2). A push also marks the device of
- * the access token as seen (spec 07, 4.1).
+ * the access token as seen (spec 07, 4.1), and leaves a line in the log,
+ * refused or not (spec 08, 3.6).
  */
 final class PushController
 {
@@ -34,17 +36,40 @@ final class PushController
             throw new AuthenticationException;
         }
 
-        // Decoded with objects, never with Laravel's array-based input: an
-        // empty `{}` has to stay an object.
+        $started = hrtime(true);
+        $deviceId = DeviceSessions::deviceOf($user);
+
         try {
-            $body = Json::decode($request->getContent());
+            $result = $handler->push($user, self::body($request), EnsureContractVersion::clientVersion($request));
+        } catch (ContractViolation|ProtocolError $error) {
+            PushLog::refused($user, $deviceId, $error, self::since($started));
+
+            throw $error;
+        }
+
+        $sessions->markSeen($user);
+        PushLog::pushed($user, $deviceId, $result, self::since($started));
+
+        return new JsonResponse($result, 200, [], Json::ENCODE_FLAGS);
+    }
+
+    /**
+     * Decoded with objects, never with Laravel's array-based input: an empty
+     * `{}` has to stay an object.
+     *
+     * @throws ContractViolation When the body is not JSON.
+     */
+    private static function body(Request $request): mixed
+    {
+        try {
+            return Json::decode($request->getContent());
         } catch (JsonException $exception) {
             throw new ContractViolation(PushHandler::DOCUMENT, [new ContractIssue('/', 'json', $exception->getMessage())]);
         }
+    }
 
-        $result = $handler->push($user, $body, EnsureContractVersion::clientVersion($request));
-        $sessions->markSeen($user);
-
-        return new JsonResponse($result, 200, [], Json::ENCODE_FLAGS);
+    private static function since(int|float $started): float
+    {
+        return (hrtime(true) - $started) / 1e9;
     }
 }

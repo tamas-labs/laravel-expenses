@@ -9,10 +9,12 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use JsonException;
+use LogicException;
 use TamasLabs\LaravelExpenses\Auth\Accounts;
 use TamasLabs\LaravelExpenses\Auth\AuthError;
 use TamasLabs\LaravelExpenses\Auth\AuthRequest;
 use TamasLabs\LaravelExpenses\Auth\DeleteAccount;
+use TamasLabs\LaravelExpenses\Auth\Throttle;
 use TamasLabs\LaravelExpenses\Auth\UserModel;
 use TamasLabs\LaravelExpenses\Contract\ContractIssue;
 use TamasLabs\LaravelExpenses\Contract\ContractViolation;
@@ -46,7 +48,7 @@ final class MeController
 
     /**
      * The password is asked again: a stolen access token alone must not be
-     * enough to delete the account.
+     * enough to delete the account. Wrong ones are braked as at the sign-in.
      *
      * @throws AuthError
      */
@@ -54,8 +56,14 @@ final class MeController
     {
         $user = UserModel::of($request->user());
         $body = $parser->body($request, 'account-delete-request');
+        $key = $user->getKey();
+        $key = \is_int($key) || \is_string($key) ? $key : throw new LogicException('The user has no key.');
+
+        Throttle::ensureDeletionAllowed($key);
 
         if (! Hash::check(AuthRequest::string($body, 'password'), $user->getAuthPassword())) {
+            Throttle::deletionFailed($key);
+
             throw AuthError::invalidCredentials();
         }
 

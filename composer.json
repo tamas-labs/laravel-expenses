@@ -36,6 +36,7 @@
         "larastan/larastan": "^3.12",
         "laravel/pint": "^1.32",
         "orchestra/testbench": "^11.2",
+        "orchestra/workbench": "^11.2",
         "pestphp/pest": "^4.7 || ^5.2",
         "pestphp/pest-plugin-laravel": "^4.1 || ^5.0"
     },
@@ -47,7 +48,9 @@
     "autoload-dev": {
         "psr-4": {
             "TamasLabs\\LaravelExpenses\\Database\\Factories\\": "database/factories/",
-            "TamasLabs\\LaravelExpenses\\Tests\\": "tests/"
+            "TamasLabs\\LaravelExpenses\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/",
+            "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
         }
     },
     "extra": {
@@ -58,14 +61,26 @@
         }
     },
     "scripts": {
-        "test": "pest",
-        "analyse": "phpstan analyse --memory-limit=1G",
+        "test": "pest --exclude-group=performance",
+        "test:performance": "pest --group=performance",
+        "analyse": [
+            "Composer\\Config::disableProcessTimeout",
+            "phpstan analyse --memory-limit=1G"
+        ],
         "format": "pint",
         "format:check": "pint --test",
         "quality": [
             "@format:check",
             "@analyse",
             "@test"
+        ],
+        "dev:seed": [
+            "@php vendor/bin/testbench migrate --force",
+            "@php vendor/bin/testbench db:seed --class=\"Workbench\\\\Database\\\\Seeders\\\\DatabaseSeeder\" --force"
+        ],
+        "dev:serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php vendor/bin/testbench serve --host=0.0.0.0 --port=8080"
         ]
     },
     "config": {

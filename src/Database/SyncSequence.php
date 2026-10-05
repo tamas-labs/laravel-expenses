@@ -56,6 +56,23 @@ final class SyncSequence
     }
 
     /**
+     * Raises `pruned_through` to `$seq`, never lowering it (spec 08, 3.3).
+     *
+     * @throws LogicException When the counter row is missing.
+     */
+    public static function raisePrunedThrough(int $seq): void
+    {
+        $updated = DB::table(PackageConfig::table(self::TABLE))
+            ->where('id', 1)
+            ->where('pruned_through', '<', $seq)
+            ->update(['pruned_through' => $seq]);
+
+        if ($updated === 0 && ! DB::table(PackageConfig::table(self::TABLE))->where('id', 1)->exists()) {
+            throw new LogicException('The sync_sequence row is missing; run the package migrations.');
+        }
+    }
+
+    /**
      * The counter as committed: the last reserved number, and the highest
      * `server_seq` whose tombstones were pruned (spec 06, 4.6).
      *

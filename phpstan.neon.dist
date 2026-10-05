@@ -3,12 +3,16 @@ includes:
 
 parameters:
     level: max
+    # Inside the project (gitignored), so the cache outlives the throwaway
+    # Docker container.
+    tmpDir: build/phpstan
     paths:
         - src
         - config
         - database
         - routes
         - tests
+        - workbench
     excludePaths:
         # Pest's arch DSL (`arch()->preset()`, `arch()->expect()`) is chained
         # through TestCall::__call and only resolved at run time, so PHPStan

@@ -68,19 +68,19 @@ final class SyncApi
      * @param  array<string, list<stdClass>>  $records  Resource → records.
      * @return TestResponse<Response>
      */
-    public static function push(User $user, array $records, ?string $version = null): TestResponse
+    public static function push(User $user, array $records, ?string $version = null, ?string $requestId = null): TestResponse
     {
-        return self::pushRaw($user, Json::encode(['records' => (object) $records]), $version);
+        return self::pushRaw($user, Json::encode(['records' => (object) $records]), $version, $requestId);
     }
 
     /**
      * @return TestResponse<Response>
      */
-    public static function pushRaw(User $user, string $body, ?string $version = null): TestResponse
+    public static function pushRaw(User $user, string $body, ?string $version = null, ?string $requestId = null): TestResponse
     {
         self::actingAs($user);
 
-        return call('POST', route('expenses.sync.push'), [], [], [], self::server($version), $body);
+        return call('POST', route('expenses.sync.push'), [], [], [], self::server($version, $requestId), $body);
     }
 
     /**
@@ -246,12 +246,13 @@ final class SyncApi
     /**
      * @return array<string, string>
      */
-    private static function server(?string $version): array
+    private static function server(?string $version, ?string $requestId = null): array
     {
         return [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',
             'HTTP_X_EXPENSES_CONTRACT' => $version ?? (string) ContractVersion::current(),
+            ...($requestId === null ? [] : ['HTTP_X_REQUEST_ID' => $requestId]),
         ];
     }
 

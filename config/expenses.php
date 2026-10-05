@@ -98,4 +98,51 @@ return [
 
     ],
 
+    /*
+     * Requests per minute and user on the sync and profile endpoints; above
+     * them 429 too_many_requests with Retry-After. The pull's limit is the
+     * highest: a first download asks for many pages in a row. The limiters
+     * are registered as expenses-push, expenses-pull and expenses-me, so the
+     * host can replace them with RateLimiter::for(). The account endpoints
+     * have fixed brakes of their own.
+     */
+    'rate_limits' => [
+        'push' => 30,
+        'pull' => 120,
+        'me' => 30,
+    ],
+
+    'http' => [
+
+        /*
+         * The largest request body, in KB; a larger one gets 413
+         * payload_too_large before it is read. A push of 500 records fits
+         * well. The web server's and PHP's limits (client_max_body_size,
+         * post_max_size) must not be lower.
+         */
+        'max_body_kb' => 4096,
+
+    ],
+
+    'pruning' => [
+
+        /*
+         * How long a tombstone is kept after the server stored it, in days,
+         * before `php artisan expenses:prune-tombstones` removes it. A device
+         * that has not synced for longer downloads everything again.
+         */
+        'tombstone_days' => 180,
+
+    ],
+
+    'logging' => [
+
+        /*
+         * The log channel of the package's own lines (the push summaries,
+         * the failed sign-ins, the pruning); null is the host's default.
+         */
+        'channel' => env('EXPENSES_LOG_CHANNEL'),
+
+    ],
+
 ];

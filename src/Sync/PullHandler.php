@@ -18,6 +18,10 @@ use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
  * committed when the pull starts: the rows up to it form a gapless prefix
  * (4.2), and each query sees all of them whenever it runs, so the cursor
  * never passes a row one of the queries missed.
+ *
+ * But the pruning may delete tombstones between the queries (spec 08, 3.3).
+ * It raises the pruning mark before it deletes, so the mark is read again
+ * after the queries: a cursor it passed may have missed a deletion.
  */
 final class PullHandler
 {
@@ -51,6 +55,10 @@ final class PullHandler
             foreach ($this->store->changedSince($definition->name, $user, $cursor->seq, $through, $limit + 1) as $row) {
                 $changes[] = [self::seq($row), $definition->name, $row];
             }
+        }
+
+        if ($cursor->isOlderThan($this->store->sequenceState()['prunedThrough'])) {
+            throw ProtocolError::cursorExpired();
         }
 
         usort($changes, static fn (array $a, array $b): int => $a[0] <=> $b[0]);

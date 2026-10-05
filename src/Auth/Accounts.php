@@ -23,6 +23,7 @@ use TamasLabs\LaravelExpenses\Mapping\RecordMapper;
 use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
 use TamasLabs\LaravelExpenses\Rules\Batch\CurrencyNotRetired;
 use TamasLabs\LaravelExpenses\Rules\Batch\ReferencesExist;
+use TamasLabs\LaravelExpenses\Support\PackageConfig;
 use TamasLabs\LaravelExpenses\Sync\Lww;
 use TamasLabs\LaravelExpenses\Sync\LwwOutcome;
 use TamasLabs\LaravelExpenses\Sync\RecordStatus;
@@ -136,7 +137,7 @@ final class Accounts
 
         if ($user === null || ! $valid) {
             Throttle::loginFailed($email, $ip);
-            Log::info('Expenses sign-in failed.', ['email_hash' => hash('sha256', $email), 'ip' => $ip]);
+            Log::channel(PackageConfig::logChannel())->info('Expenses sign-in failed.', ['email_hash' => hash('sha256', $email), 'ip' => $ip]);
 
             throw AuthError::invalidCredentials();
         }

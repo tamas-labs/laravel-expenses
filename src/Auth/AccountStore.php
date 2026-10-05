@@ -204,11 +204,11 @@ final class AccountStore
     /**
      * The refresh token with the hash, its row locked until the transaction ends.
      */
-    public function lockRefreshToken(string $hash): ?RefreshToken
+    public function lockRefreshToken(string $hash): ?StoredRefreshToken
     {
         $row = $this->refreshTokens()->where('token_hash', $hash)->lockForUpdate()->first();
 
-        return $row === null ? null : RefreshToken::fromRow($row);
+        return $row === null ? null : StoredRefreshToken::fromRow($row);
     }
 
     public function markRefreshTokenUsed(int $id, CarbonImmutable $now): void

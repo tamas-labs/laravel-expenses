@@ -27,6 +27,9 @@ final class Throttle
     /** Verification mails asked for per hour by one user. */
     public const int EMAIL_RESEND_PER_USER = 3;
 
+    /** Wrong passwords per minute on one user's account deletion (spec 08). */
+    public const int DELETE_FAILURES_PER_USER = 5;
+
     private const int MINUTE = 60;
 
     private const int HOUR = 3600;
@@ -79,6 +82,26 @@ final class Throttle
     }
 
     /**
+     * A stolen access token must not let the password be guessed at the
+     * deletion faster than at the sign-in.
+     *
+     * @throws AuthError When the user's deletion failed too often.
+     */
+    public static function ensureDeletionAllowed(int|string $userKey): void
+    {
+        $key = self::deletionKey($userKey);
+
+        if (RateLimiter::tooManyAttempts($key, self::DELETE_FAILURES_PER_USER)) {
+            throw AuthError::tooManyAttempts(RateLimiter::availableIn($key));
+        }
+    }
+
+    public static function deletionFailed(int|string $userKey): void
+    {
+        RateLimiter::hit(self::deletionKey($userKey), self::MINUTE);
+    }
+
+    /**
      * Counts one attempt, refusing it when the limit is reached.
      *
      * @throws AuthError
@@ -98,6 +121,11 @@ final class Throttle
     private static function loginKey(string $email, string $ip): string
     {
         return 'expenses:login:'.hash('sha256', $email.'|'.$ip);
+    }
+
+    private static function deletionKey(int|string $userKey): string
+    {
+        return 'expenses:account-delete:'.$userKey;
     }
 
     private static function loginIpKey(string $ip): string

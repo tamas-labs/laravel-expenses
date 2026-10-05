@@ -1,0 +1,46 @@
+# The development server (spec 08, 3.7): Testbench's Laravel skeleton with
+# the package, served by the `app` service of compose.yaml. The database
+# settings come from the service's environment, not from here, so that they
+# never reach the tests.
+laravel: '@testbench'
+
+env:
+    - APP_NAME="Expenses dev"
+    - APP_ENV=local
+    - APP_DEBUG=true
+    - APP_KEY=base64:ZXhwZW5zZXMtZGV2LXNlcnZlci1rZXktMzItYnl0ZXM=
+    - APP_URL=http://localhost:8080
+    # The mails go to the log, which goes to the container's output: the
+    # verification and reset links are read from `docker compose logs app`.
+    - MAIL_MAILER=log
+    - LOG_CHANNEL=stderr
+    - CACHE_STORE=file
+    - SESSION_DRIVER=file
+    - EXPENSES_USER_MODEL=Workbench\App\Models\User
+    - EXPENSES_PASSWORD_RESET_URL="expenses://reset-password?token={token}&email={email}"
+    - EXPENSES_EMAIL_VERIFIED_URL=http://localhost:8080/email-verified
+
+providers:
+    - Laravel\Sanctum\SanctumServiceProvider
+    - TamasLabs\LaravelExpenses\ExpensesServiceProvider
+
+migrations:
+    - vendor/laravel/sanctum/database/migrations
+
+seeders:
+    - Workbench\Database\Seeders\DatabaseSeeder
+
+workbench:
+    start: '/'
+    install: true
+    health: false
+    discovers:
+        web: true
+        api: false
+        commands: false
+        components: false
+        factories: false
+        views: false
+    build: []
+    assets: []
+    sync: []

@@ -11,13 +11,17 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Foundation\Http\Kernel;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Exceptions\MissingAbilityException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use TamasLabs\LaravelExpenses\Auth\Accounts;
 use TamasLabs\LaravelExpenses\Auth\AccountStore;
 use TamasLabs\LaravelExpenses\Auth\AuthError;
@@ -27,14 +31,21 @@ use TamasLabs\LaravelExpenses\Auth\DeviceSessions;
 use TamasLabs\LaravelExpenses\Auth\EmailVerification;
 use TamasLabs\LaravelExpenses\Auth\Passwords;
 use TamasLabs\LaravelExpenses\Auth\UserModel;
+use TamasLabs\LaravelExpenses\Console\PruneTombstonesCommand;
 use TamasLabs\LaravelExpenses\Contract\ContractValidator;
+use TamasLabs\LaravelExpenses\Http\HttpError;
+use TamasLabs\LaravelExpenses\Http\Middleware\AssignRequestId;
 use TamasLabs\LaravelExpenses\Http\Middleware\EnsureContractVersion;
+use TamasLabs\LaravelExpenses\Http\Middleware\EnsurePayloadSize;
+use TamasLabs\LaravelExpenses\Http\RateLimits;
 use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
 use TamasLabs\LaravelExpenses\Rules\DomainValidator;
 use TamasLabs\LaravelExpenses\Support\PackageConfig;
 use TamasLabs\LaravelExpenses\Sync\PullHandler;
 use TamasLabs\LaravelExpenses\Sync\PushHandler;
 use TamasLabs\LaravelExpenses\Sync\SyncStore;
+use TamasLabs\LaravelExpenses\Sync\TombstonePruner;
+use Throwable;
 
 final class ExpensesServiceProvider extends ServiceProvider
 {
@@ -43,6 +54,13 @@ final class ExpensesServiceProvider extends ServiceProvider
      * (spec 07, 6).
      */
     public const array SECRET_FIELDS = ['password', 'token', 'accessToken', 'refreshToken'];
+
+    /**
+     * The commands that run before the host could set the package up: the
+     * package discovery after `composer require` (or a deploy's `composer
+     * install` without an environment) and the config's publishing.
+     */
+    public const array SETUP_COMMANDS = ['package:discover', 'vendor:publish'];
 
     public function register(): void
     {
@@ -61,6 +79,7 @@ final class ExpensesServiceProvider extends ServiceProvider
         $this->app->singleton(Passwords::class);
         $this->app->singleton(EmailVerification::class);
         $this->app->singleton(DeleteAccount::class);
+        $this->app->singleton(TombstonePruner::class);
     }
 
     /**
@@ -68,18 +87,25 @@ final class ExpensesServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // A host missing a piece hears it at once, not on the first sign-in.
-        UserModel::check();
-        PackageConfig::passwordResetUrl();
-        PackageConfig::emailVerifiedUrl();
+        // A host missing a piece hears it at once, not on the first sign-in;
+        // but not while it is still installing the package.
+        if (! $this->app->runningConsoleCommand(self::SETUP_COMMANDS)) {
+            UserModel::check();
+            PackageConfig::passwordResetUrl();
+            PackageConfig::emailVerifiedUrl();
+        }
 
         $this->app->make(Router::class)->aliasMiddleware('expenses.contract', EnsureContractVersion::class);
+        RateLimits::register();
 
-        // Ahead of the priority list, so it wraps authentication too: even a
-        // 401 tells the client the server's contract version.
+        // Ahead of the priority list, so they wrap authentication too: even a
+        // 401 carries the request id and the server's contract version, and
+        // a body too large is refused before anything else runs.
         $this->callAfterResolving(HttpKernel::class, static function (mixed $kernel): void {
             if ($kernel instanceof Kernel) {
+                $kernel->prependToMiddlewarePriority(EnsurePayloadSize::class);
                 $kernel->prependToMiddlewarePriority(EnsureContractVersion::class);
+                $kernel->prependToMiddlewarePriority(AssignRequestId::class);
             }
         });
 
@@ -106,6 +132,8 @@ final class ExpensesServiceProvider extends ServiceProvider
         $this->loadJsonTranslationsFrom(\dirname(__DIR__).'/lang');
 
         if ($this->app->runningInConsole()) {
+            $this->commands([PruneTombstonesCommand::class]);
+
             $this->publishes([
                 self::configPath() => $this->app->configPath('expenses.php'),
             ], 'expenses-config');
@@ -122,8 +150,11 @@ final class ExpensesServiceProvider extends ServiceProvider
     /**
      * The package's routes answer a missing token and a missing ability with
      * the contract's error envelope (401 `unauthenticated`, 403 `forbidden`),
-     * never with a redirect or Laravel's default body; the secrets of a
-     * request are never flashed.
+     * never with a redirect or Laravel's default body; so do they a rate
+     * limit (429 `too_many_requests`) and an unexpected failure (500
+     * `server_error`, with the request id and nothing of the failure: the
+     * host's handler still reports it). The secrets of a request are never
+     * flashed.
      */
     private static function configureExceptions(Handler $handler): void
     {
@@ -137,6 +168,30 @@ final class ExpensesServiceProvider extends ServiceProvider
         $handler->renderable(static fn (AccessDeniedHttpException $exception, Request $request): ?JsonResponse => self::ownsRoute($request) && $exception->getPrevious() instanceof MissingAbilityException
             ? AuthError::forbidden()->render()
             : null);
+
+        $handler->renderable(static fn (ThrottleRequestsException $exception, Request $request): ?JsonResponse => self::ownsRoute($request)
+            ? HttpError::tooManyRequests($exception->getHeaders())
+            : null);
+
+        $handler->renderable(static fn (Throwable $exception, Request $request): ?JsonResponse => self::ownsRoute($request) && self::isServerError($exception)
+            ? HttpError::serverError(AssignRequestId::of($request))
+            : null);
+    }
+
+    /**
+     * Whether the exception is a failure of the server, not an answer the
+     * framework renders on its own (a redirect, a validation error, a 4xx).
+     * The package's own errors render themselves before any callback.
+     */
+    private static function isServerError(Throwable $exception): bool
+    {
+        return match (true) {
+            $exception instanceof HttpResponseException,
+            $exception instanceof AuthenticationException,
+            $exception instanceof ValidationException => false,
+            $exception instanceof HttpExceptionInterface => $exception->getStatusCode() >= 500,
+            default => true,
+        };
     }
 
     private static function ownsRoute(Request $request): bool

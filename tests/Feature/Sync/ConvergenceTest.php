@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Config;
 use TamasLabs\LaravelExpenses\Models\BudgetPocket;
 use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
 use TamasLabs\LaravelExpenses\Rules\RecordFields;
@@ -19,6 +20,12 @@ use TamasLabs\LaravelExpenses\Tests\Support\SyncApi;
 // the server holds.
 
 const CONVERGENCE_RESOURCES = ['category', 'payment-method', 'expense', 'shopping-list', 'shopping-list-item', 'budget-pocket'];
+
+// Hundreds of syncs within a second: no rate limit here (spec 08, 3.1).
+beforeEach(function (): void {
+    Config::set('expenses.rate_limits.push', 100_000);
+    Config::set('expenses.rate_limits.pull', 100_000);
+});
 
 /**
  * A UUID from the seeded generator, so a seed replays the same run.

@@ -9,6 +9,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use TamasLabs\LaravelExpenses\Auth\AccountStore;
 use TamasLabs\LaravelExpenses\Auth\DeleteAccount;
 use TamasLabs\LaravelExpenses\Auth\Events\AccountDeleted;
+use TamasLabs\LaravelExpenses\Auth\Throttle;
 use TamasLabs\LaravelExpenses\Registry\ResourceRegistry;
 use TamasLabs\LaravelExpenses\Support\PackageConfig;
 use TamasLabs\LaravelExpenses\Sync\SyncStore;
@@ -100,6 +101,24 @@ it('asks for the password again', function (): void {
 
     AuthApi::me(AuthApi::accessToken($answer))->assertOk();
     Event::assertNotDispatched(AccountDeleted::class);
+});
+
+it('brakes wrong passwords as the sign-in does, per user (spec 08)', function (): void {
+    $answer = AuthApi::registerOk();
+    $other = AuthApi::registerOk(['deviceId' => AuthApi::OTHER_DEVICE]);
+    $delete = static fn (stdClass $answer, string $password) => AuthApi::send('DELETE', 'expenses.me.destroy', ['password' => $password], AuthApi::accessToken($answer));
+
+    foreach (range(1, Throttle::DELETE_FAILURES_PER_USER) as $attempt) {
+        SyncApi::assertError($delete($answer, 'wrong horse battery'), 401, 'invalid_credentials');
+    }
+
+    $braked = $delete($answer, AuthApi::PASSWORD);
+
+    SyncApi::assertError($braked, 429, 'too_many_attempts');
+    expect((int) $braked->headers->get('Retry-After'))->toBeGreaterThan(0);
+    AuthApi::me(AuthApi::accessToken($answer))->assertOk();
+
+    $delete($other, AuthApi::PASSWORD)->assertNoContent();
 });
 
 it('offers the deletion to the host as a service', function (): void {

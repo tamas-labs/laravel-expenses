@@ -179,6 +179,49 @@ final class PackageConfig
     }
 
     /**
+     * Requests per minute and user a rate limit allows (`expenses.rate_limits.*`).
+     *
+     * @param  'push'|'pull'|'me'  $limiter
+     */
+    public static function rateLimit(string $limiter): int
+    {
+        return self::positiveInt('expenses.rate_limits.'.$limiter);
+    }
+
+    /**
+     * The largest request body, in bytes (`expenses.http.max_body_kb`).
+     */
+    public static function maxBodyBytes(): int
+    {
+        return self::positiveInt('expenses.http.max_body_kb') * 1024;
+    }
+
+    /**
+     * How many days a tombstone is kept (`expenses.pruning.tombstone_days`).
+     */
+    public static function tombstoneDays(): int
+    {
+        return self::positiveInt('expenses.pruning.tombstone_days');
+    }
+
+    /**
+     * The log channel of the package's lines (`expenses.logging.channel`);
+     * `null` for the host's default.
+     *
+     * @throws InvalidArgumentException When it is set but not a channel name.
+     */
+    public static function logChannel(): ?string
+    {
+        $channel = Config::get('expenses.logging.channel');
+
+        if ($channel === null || $channel === '') {
+            return null;
+        }
+
+        return \is_string($channel) ? $channel : throw new InvalidArgumentException('The expenses.logging.channel setting must be the name of a log channel.');
+    }
+
+    /**
      * @throws InvalidArgumentException When the setting is missing or empty.
      */
     private static function requiredString(string $key, string $env): string

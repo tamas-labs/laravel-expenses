@@ -1,0 +1,54 @@
+name: Scheduled
+
+# Spec 08, 3.12: once a week, the tests against the newest dependencies the
+# constraints allow (the newest 1.x of the schema package, the newest minor
+# of Laravel 13), so a breaking release of a dependency shows up before a
+# release of the package does, not during it.
+on:
+    schedule:
+        - cron: '30 4 * * 1'
+    workflow_dispatch:
+
+jobs:
+    tests:
+        name: Tests (PHP ${{ matrix.php }}, newest dependencies)
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                php: ['8.3', '8.4', '8.5']
+
+        services:
+            mysql:
+                image: mysql:8.4
+                env:
+                    MYSQL_ROOT_PASSWORD: secret
+                    MYSQL_DATABASE: expenses_test
+                ports:
+                    - 3306:3306
+                options: >-
+                    --health-cmd="mysqladmin ping -h 127.0.0.1 -psecret"
+                    --health-interval=5s
+                    --health-timeout=5s
+                    --health-retries=20
+
+        env:
+            DB_HOST: 127.0.0.1
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php }}
+                  extensions: pdo_mysql
+                  coverage: none
+
+            # No cache: the point is to fetch whatever is newest today.
+            - run: composer update --prefer-stable --no-interaction --no-progress
+
+            - run: composer show --direct
+
+            - run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+            - run: vendor/bin/pest --exclude-group=performance

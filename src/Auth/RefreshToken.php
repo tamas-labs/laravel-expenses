@@ -5,49 +5,55 @@ declare(strict_types=1);
 namespace TamasLabs\LaravelExpenses\Auth;
 
 use Carbon\CarbonImmutable;
-use LogicException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
+use Illuminate\Database\Eloquent\Model;
 use TamasLabs\LaravelExpenses\Database\Casts\UtcDateTime;
+use TamasLabs\LaravelExpenses\Support\PackageConfig;
 
 /**
- * A stored refresh token (spec 07, 4.2), as read from its row.
+ * A row of the `refresh_tokens` table, for Laravel's `model:prune` (spec 08,
+ * 3.4): a token goes a week after it expired. Until then a used one stays,
+ * so presenting it again still reveals a theft.
  *
- * @internal
+ * Only the pruning reads the table through this model; the token flows go
+ * through the {@see AccountStore}.
+ *
+ * @property int $id
+ * @property CarbonImmutable $expires_at
  */
-final readonly class RefreshToken
+final class RefreshToken extends Model
 {
-    public function __construct(
-        public int $id,
-        public int|string $userKey,
-        public string $deviceId,
-        public string $family,
-        public CarbonImmutable $expiresAt,
-        public ?CarbonImmutable $usedAt,
-    ) {}
+    use MassPrunable;
 
     /**
-     * @throws LogicException When the row does not hold a refresh token.
+     * How long an expired token is kept, in days.
      */
-    public static function fromRow(object $row): self
+    public const int GRACE_DAYS = 7;
+
+    public $timestamps = false;
+
+    public function getTable(): string
     {
-        $id = $row->id ?? null;
-        $userKey = $row->user_id ?? null;
-        $deviceId = $row->device_id ?? null;
-        $family = $row->family ?? null;
-        $expiresAt = $row->expires_at ?? null;
-        $usedAt = $row->used_at ?? null;
-
-        if (! \is_int($id) || ! (\is_int($userKey) || \is_string($userKey)) || ! \is_string($deviceId) || ! \is_string($family)
-            || ! \is_string($expiresAt) || ! ($usedAt === null || \is_string($usedAt))) {
-            throw new LogicException('A refresh_tokens row does not have the expected columns.');
-        }
-
-        return new self($id, $userKey, $deviceId, $family, self::instant($expiresAt), $usedAt === null ? null : self::instant($usedAt));
+        return PackageConfig::table(AccountStore::REFRESH_TOKENS);
     }
 
-    private static function instant(string $value): CarbonImmutable
+    /**
+     * @return Builder<self>
+     */
+    public function prunable(): Builder
     {
-        $instant = CarbonImmutable::rawCreateFromFormat('!'.UtcDateTime::FORMAT, $value, 'UTC');
+        return self::query()->where('expires_at', '<', CarbonImmutable::now('UTC')->subDays(self::GRACE_DAYS)->format(UtcDateTime::FORMAT));
+    }
 
-        return $instant instanceof CarbonImmutable ? $instant : throw new LogicException(sprintf('"%s" is not a stored timestamp.', $value));
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'expires_at' => UtcDateTime::class,
+            'used_at' => UtcDateTime::class,
+        ];
     }
 }

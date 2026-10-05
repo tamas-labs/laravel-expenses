@@ -15,7 +15,10 @@ use TamasLabs\LaravelExpenses\Http\Controllers\Auth\RegisterController;
 use TamasLabs\LaravelExpenses\Http\Controllers\MeController;
 use TamasLabs\LaravelExpenses\Http\Controllers\PullController;
 use TamasLabs\LaravelExpenses\Http\Controllers\PushController;
+use TamasLabs\LaravelExpenses\Http\Middleware\AssignRequestId;
 use TamasLabs\LaravelExpenses\Http\Middleware\EnsureEmailIsVerified;
+use TamasLabs\LaravelExpenses\Http\Middleware\EnsurePayloadSize;
+use TamasLabs\LaravelExpenses\Http\RateLimits;
 use TamasLabs\LaravelExpenses\Support\PackageConfig;
 
 /*
@@ -24,10 +27,11 @@ use TamasLabs\LaravelExpenses\Support\PackageConfig;
  * version. Authentication is the package's own, not a setting: a Sanctum
  * token with the `expenses:access` ability, the middleware named by class so
  * the host needs no alias. There is no way to configure an unauthenticated
- * sync route.
+ * sync route. So are the request id, the body size limit and the rate
+ * limits (spec 08); the provider runs the first two before anything else.
  */
 Route::prefix(PackageConfig::routePrefix())
-    ->middleware(PackageConfig::routeMiddleware())
+    ->middleware([AssignRequestId::class, ...PackageConfig::routeMiddleware(), EnsurePayloadSize::class])
     ->name('expenses.')
     ->group(static function (): void {
         Route::post('auth/register', RegisterController::class)->name('auth.register');
@@ -41,13 +45,14 @@ Route::prefix(PackageConfig::routePrefix())
             // work before the email is verified.
             Route::post('auth/logout', LogoutController::class)->name('auth.logout');
             Route::post('auth/email/resend', [EmailVerificationController::class, 'resend'])->name('auth.email.resend');
-            Route::get('me', [MeController::class, 'show'])->name('me.show');
-            Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
+            // The password check of the deletion has no brake but this one.
+            Route::get('me', [MeController::class, 'show'])->name('me.show')->middleware(RateLimits::middleware(RateLimits::ME));
+            Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy')->middleware(RateLimits::middleware(RateLimits::ME));
 
             Route::middleware(EnsureEmailIsVerified::class)->group(static function (): void {
-                Route::patch('me', [MeController::class, 'update'])->name('me.update');
-                Route::post('sync/push', PushController::class)->name('sync.push');
-                Route::get('sync/pull', PullController::class)->name('sync.pull');
+                Route::patch('me', [MeController::class, 'update'])->name('me.update')->middleware(RateLimits::middleware(RateLimits::ME));
+                Route::post('sync/push', PushController::class)->name('sync.push')->middleware(RateLimits::middleware(RateLimits::PUSH));
+                Route::get('sync/pull', PullController::class)->name('sync.pull')->middleware(RateLimits::middleware(RateLimits::PULL));
             });
         });
     });
@@ -58,5 +63,6 @@ Route::prefix(PackageConfig::routePrefix())
  * signature, checked by the controller, is its authorization.
  */
 Route::prefix(PackageConfig::routePrefix())
+    ->middleware([AssignRequestId::class, EnsurePayloadSize::class])
     ->get('auth/email/verify/{uuid}/{hash}', [EmailVerificationController::class, 'verify'])
     ->name(EmailVerification::ROUTE);

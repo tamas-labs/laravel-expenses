@@ -104,3 +104,39 @@ a [Semantic Versioning](https://semver.org/)-et.
   - új függőség: `laravel/sanctum`; új config kulcsok: `expenses.auth.access_ttl`,
     `expenses.auth.refresh_ttl`, `expenses.auth.password_reset_url`,
     `expenses.auth.email_verified_url`, `expenses.auth.require_verified_email`.
+- Üzemeltetés és kiadás:
+  - általános rate limit felhasználónként: push 30, pull 120, `/me` (GET, PATCH, DELETE) 30 kérés
+    percenként, felette 429 `too_many_requests` `Retry-After` fejléccel. Nevesített limiterek
+    (`expenses-push`, `expenses-pull`, `expenses-me`), a host `RateLimiter::for()`-ral felülírhatja;
+  - body-méret korlát minden csomagroute-on (alapértelmezés: 4096 KB): a `Content-Length` alapján a
+    törzs beolvasása előtt, fejléc nélkül a beolvasott méret alapján, 413 `payload_too_large`;
+  - `php artisan expenses:prune-tombstones` (`--days`, `--dry-run`): a megőrzési időn (180 nap, a
+    szerver `synced_at`-je szerint) túli, semmi által nem hivatkozott tombstone-ok törlése, a
+    push-sorrend fordítottjában, ezres kötegekben, a tulajdonosok zárja alatt. A `pruned_through` a
+    törlés előtt emelkedik, és a pull a lekérdezései után újra ellenőrzi, így egy régebbi cursor
+    mindig 410 `cursor_expired`-et kap, sosem marad le csendben egy törlésről;
+  - a fióktörlés jelszó-ellenőrzése a bejelentkezéshez hasonló féket kapott: percenként 5 hibás
+    jelszó felhasználónként, utána 429 `too_many_attempts`;
+  - a csomag induláskori ellenőrzései (User modell, a két kötelező URL) nem futnak a
+    `package:discover` és a `vendor:publish` alatt, így a `composer require` és egy környezet nélküli
+    deploy `composer install`-ja nem bukik el a beállítás előtt;
+  - a refresh tokenek karbantartása a Laravel `model:prune`-jával
+    (`TamasLabs\LaravelExpenses\Auth\RefreshToken`, a lejárat után 7 nappal);
+  - kérésazonosító: az érvényes UUID `X-Request-Id`-t a csomag átveszi, különben generál egyet,
+    visszaküldi a válaszon, és a Laravel Contexten át minden naplósorba beteszi;
+  - push-összesítő a naplóban (felhasználó, eszköz, erőforrásonként és státuszonként a darabszám,
+    időtartam); `rejected` rekordnál `warning` a hibák `path` és `keyword` párjaival, a teljes egészében
+    elutasított push-nál is, rekordtartalom nélkül;
+  - a váratlan hiba (500) a csomag route-jain a `server_error` borítékot kapja a kérésazonosítóval,
+    belső részletek nélkül, a kivétel továbbra is a host kezelőjéhez kerül;
+  - fejlesztői szerver a kliensnek: `docker compose up app` (Testbench Workbench, `8080`-as port,
+    saját, kötetben tárolt MySQL), `composer dev:seed` a `dev@example.com` / `password`
+    tesztfelhasználóval és a kliens seed kategóriáival, alkategóriáival és fizetési módjaival a
+    rögzített seed UUID-kkal;
+  - teljesítménymérések (`composer test:performance`, a CI-ban nem blokkoló job), heti ütemezett CI a
+    legfrissebb engedett függőségekkel, `bin/release-smoke.sh` egy friss Laravel 13 appon;
+  - teljes dokumentáció: [README.hu.md](README.hu.md), [README.en.md](README.en.md),
+    [UPGRADE.md](UPGRADE.md);
+  - új config kulcsok: `expenses.rate_limits.push`, `expenses.rate_limits.pull`,
+    `expenses.rate_limits.me`, `expenses.http.max_body_kb`, `expenses.pruning.tombstone_days`,
+    `expenses.logging.channel`.

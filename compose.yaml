@@ -24,5 +24,47 @@ services:
             timeout: 5s
             retries: 30
 
+    # The development server for the client (spec 08, 3.7), on port 8080:
+    # migrates, seeds the test user (dev@example.com / password) and serves
+    # Testbench's Workbench application.
+    app:
+        build: docker/php
+        working_dir: /app
+        volumes:
+            - .:/app
+            - composer-cache:/tmp/composer/cache
+        user: '${UID:-1000}:${GID:-1000}'
+        environment:
+            DB_CONNECTION: mysql
+            DB_HOST: dev-mysql
+            DB_PORT: 3306
+            DB_DATABASE: expenses
+            DB_USERNAME: root
+            DB_PASSWORD: secret
+            # The built-in server answers several requests at a time.
+            PHP_CLI_SERVER_WORKERS: 4
+        ports:
+            - '8080:8080'
+        command: sh -c 'composer install --no-interaction --no-progress && composer dev:seed && composer dev:serve'
+        depends_on:
+            dev-mysql:
+                condition: service_healthy
+
+    # The development server's database: kept in a volume, so the accounts
+    # and the synced data survive a restart. `docker compose down -v` wipes it.
+    dev-mysql:
+        image: mysql:8.4
+        environment:
+            MYSQL_ROOT_PASSWORD: secret
+            MYSQL_DATABASE: expenses
+        volumes:
+            - dev-mysql-data:/var/lib/mysql
+        healthcheck:
+            test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-psecret']
+            interval: 2s
+            timeout: 5s
+            retries: 30
+
 volumes:
     composer-cache:
+    dev-mysql-data:

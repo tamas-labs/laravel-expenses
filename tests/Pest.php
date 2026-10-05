@@ -12,13 +12,18 @@ pest()->extend(TestCase::class)->in('Feature');
 pest()->use(RefreshDatabase::class)->in(
     'Feature/Auth',
     'Feature/Database',
+    'Feature/Http',
     'Feature/Mapping',
+    'Feature/Performance',
     'Feature/Registry',
     'Feature/Rules',
+    'Feature/Workbench',
     // Not the ConcurrencyTest: its connections have to see each other's commits.
     'Feature/Sync/PushTest.php',
     'Feature/Sync/PullTest.php',
     'Feature/Sync/LwwTest.php',
     'Feature/Sync/CursorTest.php',
     'Feature/Sync/ConvergenceTest.php',
+    'Feature/Sync/PruneTombstonesTest.php',
+    'Feature/Sync/PushLogTest.php',
 );
